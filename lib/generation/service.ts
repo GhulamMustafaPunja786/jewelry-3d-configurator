@@ -252,7 +252,11 @@ export async function pollAndSyncJob(
         job.prompt,
       );
       modelUrl = assets.modelUrl;
-      previewUrl = assets.previewUrl;
+      // Prefer durable local concept art over fragile external stock URLs
+      previewUrl =
+        job.conceptImageUrl?.startsWith("/")
+          ? job.conceptImageUrl
+          : assets.previewUrl;
     }
   } else {
     const status = await provider.getJobStatus(providerJobId);

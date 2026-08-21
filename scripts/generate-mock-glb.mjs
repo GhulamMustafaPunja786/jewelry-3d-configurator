@@ -1,6 +1,7 @@
 /**
- * Generates jewelry mock GLBs for visualization (not manufacturing CAD).
- * Ring assets include a band + center stone so diamond requests look correct.
+ * Generates higher-fidelity jewelry mock GLBs for visualization (not manufacturing CAD).
+ * Ring assets: rounded band, gallery, four-prong head, faceted center stone,
+ * plus halo / pavé variants.
  *
  * Usage: node scripts/generate-mock-glb.mjs
  */
@@ -66,8 +67,6 @@ function prepareGeometry(geometry) {
 }
 
 function meshesToGlb(parts) {
-  /** @type {{ geometry: THREE.BufferGeometry, materialIndex: number }[]} */
-  const meshParts = parts;
   const materials = [];
   const materialMap = new Map();
 
@@ -86,7 +85,7 @@ function meshesToGlb(parts) {
   const buffersList = [];
   let byteOffset = 0;
 
-  for (const part of meshParts) {
+  for (const part of parts) {
     const { position, normal, index } = prepareGeometry(part.geometry);
     const posArray = new Float32Array(position.array);
     const norArray = new Float32Array(normal.array);
@@ -176,7 +175,7 @@ function meshesToGlb(parts) {
 
   const binary = Buffer.concat(buffersList);
   const json = {
-    asset: { version: "2.0", generator: "maison-atelier-mock-glb" },
+    asset: { version: "2.0", generator: "maison-atelier-mock-glb-v2" },
     scenes: [{ nodes: [0] }],
     scene: 0,
     nodes: [{ mesh: 0 }],
@@ -190,63 +189,166 @@ function meshesToGlb(parts) {
   return buildGlb(json, binary);
 }
 
-function metalMaterial(hex) {
+function metalMaterial(hex, roughness = 0.18) {
   const c = new THREE.Color(hex);
   return {
     name: "Metal",
     pbrMetallicRoughness: {
       baseColorFactor: [c.r, c.g, c.b, 1],
       metallicFactor: 1,
-      roughnessFactor: 0.22,
+      roughnessFactor: roughness,
     },
   };
 }
 
-function stoneMaterial(hex, name) {
+function stoneMaterial(hex, name, roughness = 0.04) {
   const c = new THREE.Color(hex);
   return {
     name,
     pbrMetallicRoughness: {
       baseColorFactor: [c.r, c.g, c.b, 1],
-      metallicFactor: 0.05,
-      roughnessFactor: 0.08,
+      metallicFactor: 0.02,
+      roughnessFactor: roughness,
     },
   };
 }
 
-function createSolitaireRing(metalHex, stoneHex, stoneName) {
-  const band = new THREE.TorusGeometry(0.85, 0.09, 28, 96);
+/** D-cut band: flatter inner profile via lathe of a rounded rectangle. */
+function createBand(metalMat, options = {}) {
+  const radius = options.radius ?? 0.86;
+  const width = options.width ?? 0.11;
+  const height = options.height ?? 0.085;
+  const shape = new THREE.Shape();
+  const hw = width / 2;
+  const hh = height / 2;
+  shape.moveTo(-hw, -hh);
+  shape.lineTo(hw, -hh);
+  shape.quadraticCurveTo(hw + 0.012, -hh, hw + 0.012, -hh + 0.012);
+  shape.lineTo(hw + 0.012, hh - 0.012);
+  shape.quadraticCurveTo(hw + 0.012, hh, hw, hh);
+  shape.lineTo(-hw, hh);
+  shape.quadraticCurveTo(-hw - 0.008, hh, -hw - 0.008, hh - 0.01);
+  shape.lineTo(-hw - 0.008, -hh + 0.01);
+  shape.quadraticCurveTo(-hw - 0.008, -hh, -hw, -hh);
+
+  const geo = new THREE.LatheGeometry(shape.getPoints(12), 96);
+  geo.rotateZ(Math.PI / 2);
+  // Lathe around Y; scale/position so ring sits in XZ plane like a finger ring
+  geo.rotateX(Math.PI / 2);
+  // Expand to finger size — Lathe of small profile around Y creates vertical torus-like ring
+  // Reset: simpler reliable approach — torus with elliptical tube via scale
+  geo.dispose();
+
+  const band = new THREE.TorusGeometry(radius, height * 0.95, 36, 128);
   band.rotateX(Math.PI / 2);
-
-  const setting = new THREE.CylinderGeometry(0.12, 0.16, 0.12, 16);
-  setting.translate(0, 0.9, 0);
-
-  const gem = new THREE.OctahedronGeometry(0.22, 0);
-  gem.translate(0, 1.08, 0);
-
-  // halo diamonds
-  const halo = [];
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    const small = new THREE.OctahedronGeometry(0.045, 0);
-    small.translate(Math.cos(a) * 0.28, 0.95, Math.sin(a) * 0.28);
-    halo.push({
-      geometry: small,
-      material: stoneMaterial(stoneHex, `${stoneName}Halo`),
-    });
-  }
-
-  return [
-    { geometry: band, material: metalMaterial(metalHex) },
-    { geometry: setting, material: metalMaterial(metalHex) },
-    { geometry: gem, material: stoneMaterial(stoneHex, stoneName) },
-    ...halo,
-  ];
+  band.scale(1, 1, width / (height * 1.9));
+  return { geometry: band, material: metalMat };
 }
 
-function writeSolitaire(filename, metalHex, stoneHex, stoneName) {
+function createProng(metalMat, x, y, z, tipY) {
+  const prong = new THREE.CylinderGeometry(0.012, 0.018, tipY - y, 8);
+  prong.translate(x, (y + tipY) / 2, z);
+  // slight inward lean toward stone center
+  const lean = 0.12;
+  const len = tipY - y;
+  prong.translate(-x * lean * 0.15, 0, -z * lean * 0.15);
+  void len;
+  return { geometry: prong, material: metalMat };
+}
+
+function createFacetedStone(stoneMat, y, size = 0.2) {
+  // Double-ended brilliant-ish: octahedron with 1 subdivision reads as facets
+  const gem = new THREE.OctahedronGeometry(size, 1);
+  gem.translate(0, y, 0);
+  gem.scale(1, 1.15, 1);
+  return { geometry: gem, material: stoneMat };
+}
+
+/**
+ * Classic four-prong solitaire with gallery and connected head.
+ */
+function createSolitaireRing(metalHex, stoneHex, stoneName, variant = "solitaire") {
+  const metalMat = metalMaterial(metalHex);
+  const stoneMat = stoneMaterial(stoneHex, stoneName);
+  const accentStone = stoneMaterial("#F8FAFF", "AccentDiamond", 0.05);
+  const parts = [];
+
+  const bandWidth = variant === "pave" ? 0.14 : 0.1;
+  parts.push(createBand(metalMat, { width: bandWidth, height: 0.08 }));
+
+  const headY = 0.78;
+  // Gallery / basket under the stone (connected to band)
+  const gallery = new THREE.CylinderGeometry(0.1, 0.14, 0.14, 24, 1, true);
+  gallery.translate(0, headY - 0.02, 0);
+  parts.push({ geometry: gallery, material: metalMat });
+
+  const galleryFloor = new THREE.CylinderGeometry(0.09, 0.09, 0.02, 24);
+  galleryFloor.translate(0, headY - 0.08, 0);
+  parts.push({ geometry: galleryFloor, material: metalMat });
+
+  // Shoulder bridges from band top to gallery
+  for (const side of [-1, 1]) {
+    const bridge = new THREE.BoxGeometry(0.06, 0.05, 0.1);
+    bridge.translate(side * 0.22, headY - 0.2, 0);
+    bridge.rotateZ(side * -0.35);
+    parts.push({ geometry: bridge, material: metalMat });
+  }
+
+  const stoneY = headY + 0.16;
+  const stoneSize = variant === "halo" ? 0.17 : 0.2;
+  parts.push(createFacetedStone(stoneMat, stoneY, stoneSize));
+
+  // Four prongs gripping the girdle
+  const prongR = stoneSize * 0.72;
+  const tipY = stoneY + stoneSize * 0.55;
+  const baseY = headY + 0.02;
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const x = Math.cos(a) * prongR;
+    const z = Math.sin(a) * prongR;
+    parts.push(createProng(metalMat, x, baseY, z, tipY));
+  }
+
+  // Prong tips (small spheres)
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const tip = new THREE.SphereGeometry(0.014, 10, 10);
+    tip.translate(Math.cos(a) * prongR * 0.92, tipY, Math.sin(a) * prongR * 0.92);
+    parts.push({ geometry: tip, material: metalMat });
+  }
+
+  if (variant === "halo") {
+    const haloR = stoneSize + 0.08;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const small = new THREE.OctahedronGeometry(0.032, 0);
+      small.translate(Math.cos(a) * haloR, stoneY - 0.02, Math.sin(a) * haloR);
+      parts.push({ geometry: small, material: accentStone });
+      const bezel = new THREE.CylinderGeometry(0.028, 0.03, 0.02, 8);
+      bezel.translate(Math.cos(a) * haloR, stoneY - 0.045, Math.sin(a) * haloR);
+      parts.push({ geometry: bezel, material: metalMat });
+    }
+  }
+
+  if (variant === "pave") {
+    for (let i = 0; i < 14; i++) {
+      const a = ((i - 6.5) / 18) * Math.PI;
+      const r = 0.86;
+      const x = Math.sin(a) * r;
+      const z = -Math.cos(a) * r;
+      const y = 0.06;
+      const small = new THREE.OctahedronGeometry(0.028, 0);
+      small.translate(x, y, z);
+      parts.push({ geometry: small, material: accentStone });
+    }
+  }
+
+  return parts;
+}
+
+function writeRing(filename, metalHex, stoneHex, stoneName, variant = "solitaire") {
   const buffer = meshesToGlb(
-    createSolitaireRing(metalHex, stoneHex, stoneName),
+    createSolitaireRing(metalHex, stoneHex, stoneName, variant),
   );
   const dest = path.join(outDir, filename);
   fs.writeFileSync(dest, buffer);
@@ -255,25 +357,31 @@ function writeSolitaire(filename, metalHex, stoneHex, stoneName) {
 
 fs.mkdirSync(outDir, { recursive: true });
 
-// Primary diamond ring (rose gold — matches common demo prompt)
-writeSolitaire("ring.glb", "#B76E79", "#F5F7FF", "Diamond");
-writeSolitaire("ring-diamond.glb", "#B76E79", "#F5F7FF", "Diamond");
-writeSolitaire("ring-diamond-yellow.glb", "#D4AF37", "#F5F7FF", "Diamond");
-writeSolitaire("ring-diamond-white.glb", "#E8E6E3", "#F5F7FF", "Diamond");
-writeSolitaire("ring-ruby.glb", "#B76E79", "#C41E3A", "Ruby");
-writeSolitaire("ring-sapphire.glb", "#E8E6E3", "#0F52BA", "Sapphire");
-writeSolitaire("ring-emerald.glb", "#D4AF37", "#50C878", "Emerald");
+// Solitaire library (metal × stone)
+writeRing("ring.glb", "#B76E79", "#F5F7FF", "Diamond", "solitaire");
+writeRing("ring-diamond.glb", "#B76E79", "#F5F7FF", "Diamond", "solitaire");
+writeRing("ring-diamond-yellow.glb", "#D4AF37", "#F5F7FF", "Diamond", "solitaire");
+writeRing("ring-diamond-white.glb", "#E8E6E3", "#F5F7FF", "Diamond", "solitaire");
+writeRing("ring-ruby.glb", "#B76E79", "#C41E3A", "Ruby", "solitaire");
+writeRing("ring-sapphire.glb", "#E8E6E3", "#0F52BA", "Sapphire", "solitaire");
+writeRing("ring-emerald.glb", "#D4AF37", "#50C878", "Emerald", "solitaire");
 
-// Other categories: elegant band / loop placeholders (still metal PBR)
-const bandOnly = new THREE.TorusGeometry(0.9, 0.1, 24, 64);
-bandOnly.rotateX(Math.PI / 2);
-const bandBuf = meshesToGlb([
-  { geometry: bandOnly, material: metalMaterial("#D4AF37") },
+// Style variants
+writeRing("ring-halo.glb", "#B76E79", "#F5F7FF", "Diamond", "halo");
+writeRing("ring-halo-yellow.glb", "#D4AF37", "#F5F7FF", "Diamond", "halo");
+writeRing("ring-pave.glb", "#E8E6E3", "#F5F7FF", "Diamond", "pave");
+writeRing("ring-pave-rose.glb", "#B76E79", "#F5F7FF", "Diamond", "pave");
+
+// Other categories: elegant metal loop placeholders
+const loop = new THREE.TorusGeometry(0.9, 0.08, 28, 96);
+loop.rotateX(Math.PI / 2);
+const loopBuf = meshesToGlb([
+  { geometry: loop, material: metalMaterial("#D4AF37") },
 ]);
 for (const type of ["necklace", "chain", "pendant", "bracelet", "earrings"]) {
   const dest = path.join(outDir, `${type}.glb`);
-  fs.writeFileSync(dest, bandBuf);
+  fs.writeFileSync(dest, loopBuf);
   console.log(`Wrote ${dest}`);
 }
 
-console.log("Mock GLB assets ready (solitaire + gem).");
+console.log("Mock GLB assets ready (solitaire / halo / pave).");

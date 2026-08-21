@@ -448,6 +448,7 @@ function CreateFlow() {
           onSelectVersion={handleSelectVersion}
           onUseDesign={handleUseDesign}
           regenerating={busy}
+          jewelryType={request.jewelryType}
           onEditRequest={handleBackToForm}
           onStartOver={handleStartOver}
           onGenerateAnother={async (feedback) => {

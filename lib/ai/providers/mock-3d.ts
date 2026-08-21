@@ -44,12 +44,20 @@ function inferMetal(prompt: string): JewelryMetalPreference {
   return "rose_gold";
 }
 
-/** Pick a richer mock mesh so diamond rings show a center stone. */
+function inferStyleVariant(prompt?: string, style?: string | null): "halo" | "pave" | "solitaire" {
+  const p = `${style ?? ""} ${prompt ?? ""}`.toLowerCase();
+  if (p.includes("halo")) return "halo";
+  if (p.includes("pav") || p.includes("pave") || p.includes("pavé")) return "pave";
+  return "solitaire";
+}
+
+/** Pick a richer mock mesh so diamond rings show a center stone + setting. */
 export function resolveMockModelUrl(
   jewelryType: string,
   options?: {
     stone?: JewelryStonePreference | string | null;
     metal?: JewelryMetalPreference | string | null;
+    style?: string | null;
     prompt?: string;
   },
 ): string {
@@ -63,6 +71,18 @@ export function resolveMockModelUrl(
   const metal =
     (options?.metal as JewelryMetalPreference | undefined) ||
     (options?.prompt ? inferMetal(options.prompt) : "rose_gold");
+  const variant = inferStyleVariant(options?.prompt, options?.style);
+
+  if (variant === "halo") {
+    return metal === "yellow_gold"
+      ? "/models/ai-mock/ring-halo-yellow.glb"
+      : "/models/ai-mock/ring-halo.glb";
+  }
+  if (variant === "pave") {
+    return metal === "rose_gold"
+      ? "/models/ai-mock/ring-pave-rose.glb"
+      : "/models/ai-mock/ring-pave.glb";
+  }
 
   if (stone === "ruby") return "/models/ai-mock/ring-ruby.glb";
   if (stone === "sapphire") return "/models/ai-mock/ring-sapphire.glb";
@@ -75,14 +95,33 @@ export function resolveMockModelUrl(
   return "/models/ai-mock/ring-diamond.glb";
 }
 
+/** Always returns a path that exists under public/images/ai-placeholders/. */
 export function resolveMockPreviewUrl(
   jewelryType: string,
   stone?: string | null,
 ): string {
-  if (jewelryType === "ring" && (!stone || stone === "diamond" || stone === "any")) {
+  const known = new Set([
+    "ring",
+    "necklace",
+    "chain",
+    "pendant",
+    "bracelet",
+    "earrings",
+  ]);
+  if (
+    jewelryType === "ring" &&
+    (!stone || stone === "diamond" || stone === "any")
+  ) {
     return "/images/ai-placeholders/ring-diamond-concept.svg";
   }
-  return `/images/ai-placeholders/${jewelryType}-concept.svg`;
+  if (jewelryType === "ring") {
+    // Colored stones share the classic ring illustration until stone-specific art exists
+    return "/images/ai-placeholders/ring-concept.svg";
+  }
+  if (known.has(jewelryType)) {
+    return `/images/ai-placeholders/${jewelryType}-concept.svg`;
+  }
+  return "/images/ai-placeholders/ring-concept.svg";
 }
 
 function statusFromElapsed(elapsed: number): GenerationJobStatus {
@@ -163,6 +202,7 @@ export function resolveMockAssetsFromRequest(
     modelUrl: resolveMockModelUrl(request.jewelryType, {
       stone: request.stone,
       metal: request.metal,
+      style: request.style,
       prompt,
     }),
     previewUrl: resolveMockPreviewUrl(request.jewelryType, request.stone),

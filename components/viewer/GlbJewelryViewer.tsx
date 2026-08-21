@@ -1,7 +1,12 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { ContactShadows, OrbitControls, useGLTF } from "@react-three/drei";
+import {
+  ContactShadows,
+  Environment,
+  OrbitControls,
+  useGLTF,
+} from "@react-three/drei";
 import {
   Component,
   Suspense,
@@ -16,18 +21,20 @@ import { Button } from "@/components/ui/Button";
 
 type GlbJewelryViewerProps = {
   modelUrl: string | null | undefined;
-  /** When true and model fails, show procedural torus with clear disclaimer */
+  /** When true and model fails, show procedural solitaire with clear disclaimer */
   allowProceduralFallback?: boolean;
   className?: string;
 };
 
+/** Premium procedural solitaire used only when GLB cannot load. */
 function ProceduralFallbackMesh() {
   const metalMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: "#B76E79",
+        color: "#C9A227",
         metalness: 1,
-        roughness: 0.22,
+        roughness: 0.18,
+        envMapIntensity: 1.2,
       }),
     [],
   );
@@ -36,26 +43,72 @@ function ProceduralFallbackMesh() {
       new THREE.MeshPhysicalMaterial({
         color: "#F5F7FF",
         metalness: 0,
-        roughness: 0.05,
-        transmission: 0.85,
-        ior: 2.4,
-        thickness: 0.35,
+        roughness: 0.02,
+        transmission: 0.92,
+        ior: 2.42,
+        thickness: 0.45,
         transparent: true,
+        reflectivity: 1,
+        clearcoat: 1,
+        clearcoatRoughness: 0.02,
       }),
     [],
   );
 
+  const prongs = useMemo(() => {
+    const items: { x: number; z: number }[] = [];
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      items.push({ x: Math.cos(a) * 0.145, z: Math.sin(a) * 0.145 });
+    }
+    return items;
+  }, []);
+
   return (
     <group>
-      <mesh rotation={[Math.PI / 2, 0, 0]} material={metalMat}>
-        <torusGeometry args={[0.85, 0.09, 32, 96]} />
+      {/* Band */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} material={metalMat} castShadow>
+        <torusGeometry args={[0.86, 0.078, 36, 128]} />
       </mesh>
-      <mesh position={[0, 0.9, 0]} material={metalMat}>
-        <cylinderGeometry args={[0.12, 0.16, 0.12, 16]} />
+      {/* Gallery */}
+      <mesh position={[0, 0.76, 0]} material={metalMat} castShadow>
+        <cylinderGeometry args={[0.1, 0.14, 0.14, 24, 1, true]} />
       </mesh>
-      <mesh position={[0, 1.08, 0]} material={gemMat}>
-        <octahedronGeometry args={[0.22, 0]} />
+      <mesh position={[0, 0.7, 0]} material={metalMat}>
+        <cylinderGeometry args={[0.09, 0.09, 0.02, 24]} />
       </mesh>
+      {/* Shoulders */}
+      <mesh
+        position={[-0.22, 0.58, 0]}
+        rotation={[0, 0, 0.35]}
+        material={metalMat}
+        castShadow
+      >
+        <boxGeometry args={[0.06, 0.05, 0.1]} />
+      </mesh>
+      <mesh
+        position={[0.22, 0.58, 0]}
+        rotation={[0, 0, -0.35]}
+        material={metalMat}
+        castShadow
+      >
+        <boxGeometry args={[0.06, 0.05, 0.1]} />
+      </mesh>
+      {/* Center stone */}
+      <mesh position={[0, 0.94, 0]} scale={[1, 1.15, 1]} material={gemMat} castShadow>
+        <octahedronGeometry args={[0.2, 1]} />
+      </mesh>
+      {/* Prongs */}
+      {prongs.map((p, i) => (
+        <group key={i}>
+          <mesh position={[p.x, 0.86, p.z]} material={metalMat} castShadow>
+            <cylinderGeometry args={[0.012, 0.018, 0.22, 8]} />
+          </mesh>
+          <mesh position={[p.x * 0.92, 0.98, p.z * 0.92]} material={metalMat}>
+            <sphereGeometry args={[0.014, 10, 10]} />
+          </mesh>
+        </group>
+      ))}
     </group>
   );
 }
@@ -69,11 +122,19 @@ function GlbModel({ url }: { url: string }) {
       if (obj instanceof THREE.Mesh) {
         obj.castShadow = true;
         obj.receiveShadow = true;
+        const mat = obj.material;
+        if (mat && !Array.isArray(mat) && "metalness" in mat) {
+          const m = mat as THREE.MeshStandardMaterial;
+          if ((m.metalness ?? 0) > 0.5) {
+            m.envMapIntensity = 1.25;
+            m.needsUpdate = true;
+          }
+        }
       }
     });
   }, [cloned]);
 
-  return <primitive object={cloned} scale={1.2} />;
+  return <primitive object={cloned} scale={1.15} />;
 }
 
 function ViewerCanvas({
@@ -85,34 +146,51 @@ function ViewerCanvas({
 }) {
   return (
     <Canvas
-      camera={{ position: [0, 1.2, 3.2], fov: 35 }}
+      camera={{ position: [0.35, 1.35, 3.1], fov: 32 }}
       dpr={[1, 1.75]}
-      gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+      gl={{
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance",
+        toneMapping: THREE.ACESFilmicToneMapping,
+        toneMappingExposure: 1.15,
+      }}
       onCreated={({ gl }) => {
         gl.setClearColor("#f0ebe1", 1);
       }}
     >
-      <ambientLight intensity={0.85} />
-      <directionalLight position={[4, 6, 2]} intensity={1.35} />
-      <directionalLight position={[-3, 2, -2]} intensity={0.45} />
-      <hemisphereLight args={["#fff8ef", "#cfc4b4", 0.55]} />
+      <ambientLight intensity={0.35} />
+      <directionalLight
+        position={[4, 7, 3]}
+        intensity={1.6}
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+      />
+      <directionalLight position={[-3.5, 2.5, -2]} intensity={0.55} />
+      <directionalLight position={[0, 2, 4]} intensity={0.35} color="#fff4e8" />
+      <hemisphereLight args={["#fff8ef", "#b8a990", 0.4]} />
+      <Suspense fallback={null}>
+        <Environment preset="studio" />
+      </Suspense>
       {useFallback || !modelUrl ? (
         <ProceduralFallbackMesh />
       ) : (
         <GlbModel url={modelUrl} />
       )}
       <ContactShadows
-        position={[0, -1.1, 0]}
-        opacity={0.35}
+        position={[0, -1.05, 0]}
+        opacity={0.4}
         scale={8}
-        blur={2.5}
+        blur={2.2}
       />
       <OrbitControls
         enablePan={false}
         minDistance={2}
         maxDistance={6}
+        target={[0, 0.35, 0]}
         autoRotate
-        autoRotateSpeed={0.55}
+        autoRotateSpeed={0.5}
       />
     </Canvas>
   );
@@ -189,7 +267,7 @@ export function GlbJewelryViewer({
           }
         >
           <GlbLoadErrorBoundary
-            key={retryKey}
+            key={`${retryKey}-${modelUrl ?? "none"}`}
             onError={() => setLoadFailed(true)}
           >
             <ViewerCanvas
@@ -204,8 +282,8 @@ export function GlbJewelryViewer({
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-[rgba(32,28,24,0.72)] px-3 py-2 text-center">
           <p className="text-[11px] tracking-wide text-[#f5f0e6]">
             {loadFailed
-              ? "Unable to load 3D model · Demo fallback mesh — not AI-generated"
-              : "Demo fallback mesh — not AI-generated"}
+              ? "Unable to load 3D model · Studio fallback mesh — not manufacturing CAD"
+              : "Studio fallback mesh — not manufacturing CAD"}
           </p>
         </div>
       ) : (

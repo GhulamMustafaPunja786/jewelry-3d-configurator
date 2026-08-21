@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { VISUALIZATION_DISCLAIMER } from "@/lib/ai/types";
 import { GlbJewelryViewerDynamic } from "@/components/viewer/GlbJewelryViewerDynamic";
+import { ConceptPreviewImage } from "@/components/generator/ConceptPreviewImage";
 import { Button } from "@/components/ui/Button";
 import { Label } from "@/components/ui/Label";
 import type { GeneratorVersion } from "@/store/generator-store";
@@ -16,6 +17,7 @@ export function DesignReview({
   onEditRequest,
   onStartOver,
   regenerating,
+  jewelryType = "ring",
 }: {
   versions: GeneratorVersion[];
   selectedVersionId: string | null;
@@ -25,6 +27,7 @@ export function DesignReview({
   onEditRequest: () => void;
   onStartOver: () => void;
   regenerating?: boolean;
+  jewelryType?: string;
 }) {
   const [feedback, setFeedback] = useState("");
   const selected =
@@ -60,9 +63,6 @@ export function DesignReview({
           <h2 className="font-display mt-2 text-3xl text-[var(--color-ink)]">
             Explore your piece
           </h2>
-          <p className="mt-2 max-w-2xl text-sm text-[var(--color-ink-muted)]">
-            {VISUALIZATION_DISCLAIMER}
-          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="ghost" onClick={onEditRequest}>
@@ -79,26 +79,22 @@ export function DesignReview({
         allowProceduralFallback
       />
 
-      {selected.previewUrl ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="border border-[var(--color-border)] bg-white/70 p-3">
-            <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-              Concept preview
-            </p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={selected.previewUrl}
-              alt="Jewelry concept preview"
-              className="mx-auto max-h-56 w-auto object-contain"
-            />
-          </div>
-          <p className="self-center text-sm text-[var(--color-ink-muted)]">
-            The interactive model includes a center stone when your request asks
-            for a diamond (or other gem). This is a studio visualization — not
-            manufacturing CAD.
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="border border-[var(--color-border)] bg-white/70 p-3">
+          <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
+            Concept preview
           </p>
+          <ConceptPreviewImage
+            src={selected.previewUrl}
+            jewelryType={jewelryType}
+          />
         </div>
-      ) : null}
+        <p className="self-center text-sm leading-relaxed text-[var(--color-ink-muted)]">
+          Illustration for mood and silhouette only. Dimensions, metal purity,
+          and stone grades are confirmed by atelier specialists after you
+          submit.
+        </p>
+      </div>
 
       {versions.length > 1 ? (
         <div className="flex flex-wrap gap-2">
@@ -130,6 +126,22 @@ export function DesignReview({
           className="w-full rounded-sm border border-[var(--color-border)] bg-white px-3 py-2.5 text-sm text-[var(--color-ink)] outline-none transition placeholder:text-[var(--color-ink-muted)] focus:border-[var(--color-gold)]"
         />
       </div>
+
+      <aside
+        className="border border-[var(--color-gold)]/40 bg-[var(--color-gold-soft)]/60 px-4 py-4 sm:px-5"
+        role="note"
+        aria-label="Visualization disclaimer"
+      >
+        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[var(--color-gold-deep)]">
+          Important · Studio visualization
+        </p>
+        <p className="font-display mt-2 text-xl leading-snug text-[var(--color-ink)] sm:text-2xl">
+          This is a studio visualization — not manufacturing CAD.
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--color-ink-muted)]">
+          {VISUALIZATION_DISCLAIMER}
+        </p>
+      </aside>
 
       <div className="flex flex-wrap gap-3">
         <Button type="button" onClick={onUseDesign}>

@@ -3,10 +3,11 @@ import type {
   ImageGenerationResult,
   JewelryImageGenerator,
 } from "@/lib/ai/types";
+import { resolveMockPreviewUrl } from "@/lib/ai/providers/mock-3d";
 
 /**
  * Local placeholder concepts (no paid API).
- * Diamond ring requests get a solitaire illustration.
+ * Paths always resolve to files under public/images/ai-placeholders/.
  */
 export class MockImageGenerator implements JewelryImageGenerator {
   readonly id = "mock-image";
@@ -23,19 +24,19 @@ export class MockImageGenerator implements JewelryImageGenerator {
     }
 
     const prompt = input.prompt.toLowerCase();
-    const wantsDiamond =
-      input.jewelryType === "ring" &&
-      (prompt.includes("diamond") ||
-        prompt.includes("engagement") ||
-        prompt.includes("oval") ||
-        prompt.includes("brilliant") ||
-        (!prompt.includes("ruby") &&
-          !prompt.includes("sapphire") &&
-          !prompt.includes("emerald")));
+    let stone: string | null = null;
+    if (prompt.includes("ruby")) stone = "ruby";
+    else if (prompt.includes("sapphire")) stone = "sapphire";
+    else if (prompt.includes("emerald")) stone = "emerald";
+    else if (
+      prompt.includes("diamond") ||
+      prompt.includes("engagement") ||
+      input.jewelryType === "ring"
+    ) {
+      stone = "diamond";
+    }
 
-    const placeholder = wantsDiamond
-      ? "/images/ai-placeholders/ring-diamond-concept.svg"
-      : `/images/ai-placeholders/${input.jewelryType}-concept.svg`;
+    const placeholder = resolveMockPreviewUrl(input.jewelryType, stone);
 
     return {
       available: true,

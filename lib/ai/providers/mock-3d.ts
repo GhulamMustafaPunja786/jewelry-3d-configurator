@@ -44,14 +44,33 @@ function inferMetal(prompt: string): JewelryMetalPreference {
   return "rose_gold";
 }
 
-function inferStyleVariant(prompt?: string, style?: string | null): "halo" | "pave" | "solitaire" {
+function metalTone(
+  metal?: JewelryMetalPreference | string | null,
+): "yellow" | "white" | "rose" {
+  if (metal === "yellow_gold") return "yellow";
+  if (
+    metal === "white_gold" ||
+    metal === "platinum" ||
+    metal === "silver"
+  ) {
+    return "white";
+  }
+  return "rose";
+}
+
+function inferStyleVariant(
+  prompt?: string,
+  style?: string | null,
+): "halo" | "pave" | "solitaire" {
   const p = `${style ?? ""} ${prompt ?? ""}`.toLowerCase();
   if (p.includes("halo")) return "halo";
-  if (p.includes("pav") || p.includes("pave") || p.includes("pavé")) return "pave";
+  if (p.includes("pav") || p.includes("pave") || p.includes("pavé")) {
+    return "pave";
+  }
   return "solitaire";
 }
 
-/** Pick a richer mock mesh so diamond rings show a center stone + setting. */
+/** Map request → catalog mock GLB (tapered band + 4-prong head). */
 export function resolveMockModelUrl(
   jewelryType: string,
   options?: {
@@ -72,27 +91,19 @@ export function resolveMockModelUrl(
     (options?.metal as JewelryMetalPreference | undefined) ||
     (options?.prompt ? inferMetal(options.prompt) : "rose_gold");
   const variant = inferStyleVariant(options?.prompt, options?.style);
-
-  if (variant === "halo") {
-    return metal === "yellow_gold"
-      ? "/models/ai-mock/ring-halo-yellow.glb"
-      : "/models/ai-mock/ring-halo.glb";
-  }
-  if (variant === "pave") {
-    return metal === "rose_gold"
-      ? "/models/ai-mock/ring-pave-rose.glb"
-      : "/models/ai-mock/ring-pave.glb";
-  }
+  const tone = metalTone(metal);
 
   if (stone === "ruby") return "/models/ai-mock/ring-ruby.glb";
   if (stone === "sapphire") return "/models/ai-mock/ring-sapphire.glb";
   if (stone === "emerald") return "/models/ai-mock/ring-emerald.glb";
 
-  if (metal === "yellow_gold") return "/models/ai-mock/ring-diamond-yellow.glb";
-  if (metal === "white_gold" || metal === "platinum" || metal === "silver") {
-    return "/models/ai-mock/ring-diamond-white.glb";
+  if (variant === "halo") {
+    return `/models/ai-mock/ring-halo-${tone}.glb`;
   }
-  return "/models/ai-mock/ring-diamond.glb";
+  if (variant === "pave") {
+    return `/models/ai-mock/ring-pave-${tone}.glb`;
+  }
+  return `/models/ai-mock/ring-solitaire-${tone}.glb`;
 }
 
 /** Always returns a path that exists under public/images/ai-placeholders/. */

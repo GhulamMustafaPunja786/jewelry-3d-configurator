@@ -52,13 +52,22 @@ Customer request
 
 ---
 
-## Concept image generation
+## Freepik (optional concept images)
 
-| Field | Detail |
-|-------|--------|
-| **Current** | `MockImageGenerator` — placeholder SVG concepts |
-| **Future** | Local open-source image models (e.g. community Stable Diffusion builds) via `IMAGE_PROVIDER` / `IMAGE_PROVIDER_URL` |
-| **Paid APIs** | Not required for MVP |
+If you have a Freepik subscription / API access:
+
+1. Create an API key in your Freepik developer dashboard (you do this yourself).
+2. Set in Vercel / `.env`:
+   ```
+   IMAGE_PROVIDER=freepik
+   FREEPIK_API_KEY=your_key_here
+   ```
+3. Redeploy.
+
+We never log into Freepik or Pinterest for you. Pinterest is not supported as an automated source (ToS / scraping). Prefer uploading your own reference image on the create form, or Freepik API.
+
+Respect Freepik license terms for any commercial jewelry use.
+
 
 ---
 

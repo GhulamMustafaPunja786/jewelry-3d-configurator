@@ -25,9 +25,22 @@ function ProceduralFallbackMesh() {
   const metalMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: "#C9A227",
+        color: "#B76E79",
         metalness: 1,
-        roughness: 0.28,
+        roughness: 0.22,
+      }),
+    [],
+  );
+  const gemMat = useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        color: "#F5F7FF",
+        metalness: 0,
+        roughness: 0.05,
+        transmission: 0.85,
+        ior: 2.4,
+        thickness: 0.35,
+        transparent: true,
       }),
     [],
   );
@@ -35,7 +48,13 @@ function ProceduralFallbackMesh() {
   return (
     <group>
       <mesh rotation={[Math.PI / 2, 0, 0]} material={metalMat}>
-        <torusGeometry args={[0.9, 0.12, 32, 96]} />
+        <torusGeometry args={[0.85, 0.09, 32, 96]} />
+      </mesh>
+      <mesh position={[0, 0.9, 0]} material={metalMat}>
+        <cylinderGeometry args={[0.12, 0.16, 0.12, 16]} />
+      </mesh>
+      <mesh position={[0, 1.08, 0]} material={gemMat}>
+        <octahedronGeometry args={[0.22, 0]} />
       </mesh>
     </group>
   );

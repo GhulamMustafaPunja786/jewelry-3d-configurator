@@ -57,6 +57,26 @@ export function DesignReview({
         allowProceduralFallback
       />
 
+      {selected.previewUrl ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="border border-[var(--color-border)] bg-white/70 p-3">
+            <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
+              Concept preview
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={selected.previewUrl}
+              alt="Jewelry concept preview"
+              className="mx-auto max-h-56 w-auto object-contain"
+            />
+          </div>
+          <p className="self-center text-sm text-[var(--color-ink-muted)]">
+            The interactive model includes a center stone when your request asks
+            for a diamond (or other gem). This is a studio visualization — not
+            manufacturing CAD.
+          </p>
+        </div>
+      ) : null}
       {versions.length > 1 ? (
         <div className="flex flex-wrap gap-2">
           {versions.map((v) => (

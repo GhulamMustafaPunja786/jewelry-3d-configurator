@@ -5,8 +5,11 @@ import type {
   GenerationJobStatus,
   JewelryGenerationRequest,
 } from "@/lib/ai/types";
+import { resolveMockAssetsFromRequest } from "@/lib/ai/providers/mock-3d";
 import { generateDesignId } from "@/lib/design-id";
 import { prisma } from "@/lib/database/prisma";
+
+const MOCK_DELAY_MS = Number(process.env.AI3D_MOCK_DELAY_MS || 2500);
 
 export type StartGenerationInput = {
   request: JewelryGenerationRequest;
@@ -215,57 +218,112 @@ export async function pollAndSyncJob(
 
   const provider = createAI3DProvider();
   const providerJobId = job.providerJobId ?? job.id;
-  const status = await provider.getJobStatus(providerJobId);
 
-  if (status.status === "FAILED") {
-    const failed = await prisma.generationJob.update({
-      where: { id: job.id },
-      data: {
-        status: "FAILED",
-        progressMessage: status.progressMessage ?? "Generation failed",
-        error: status.error ?? "Generation failed",
-        completedAt: new Date(),
-      },
-      include: { design: { select: { designId: true } } },
-    });
-    return toJobView(failed);
+  // Mock provider: complete from DB timestamps (serverless-safe, no in-memory jobs)
+  let modelUrl: string | null = null;
+  let previewUrl: string | null = job.conceptImageUrl;
+  let nextStatus: GenerationJobStatus = asJobStatus(job.status);
+  let progressMessage = job.progressMessage;
+
+  if (job.provider === "mock" || provider.id === "mock") {
+    const elapsed = Date.now() - job.createdAt.getTime();
+    if (elapsed < MOCK_DELAY_MS * 0.35) {
+      nextStatus = "QUEUED";
+      progressMessage = "Understanding your design...";
+    } else if (elapsed < MOCK_DELAY_MS) {
+      nextStatus = "PROCESSING";
+      progressMessage = "Building your 3D model...";
+    } else {
+      nextStatus = "COMPLETED";
+      progressMessage = "Preparing your interactive preview...";
+      let request: JewelryGenerationRequest | null = null;
+      try {
+        request = job.requestJson
+          ? (JSON.parse(job.requestJson) as JewelryGenerationRequest)
+          : null;
+      } catch {
+        request = null;
+      }
+      const assets = resolveMockAssetsFromRequest(
+        request ?? {
+          jewelryType: job.jewelryType as JewelryGenerationRequest["jewelryType"],
+          description: job.prompt,
+        },
+        job.prompt,
+      );
+      modelUrl = assets.modelUrl;
+      previewUrl = assets.previewUrl;
+    }
+  } else {
+    const status = await provider.getJobStatus(providerJobId);
+
+    if (status.status === "FAILED") {
+      const failed = await prisma.generationJob.update({
+        where: { id: job.id },
+        data: {
+          status: "FAILED",
+          progressMessage: status.progressMessage ?? "Generation failed",
+          error: status.error ?? "Generation failed",
+          completedAt: new Date(),
+        },
+        include: { design: { select: { designId: true } } },
+      });
+      return toJobView(failed);
+    }
+
+    if (status.status !== "COMPLETED") {
+      const mid = await prisma.generationJob.update({
+        where: { id: job.id },
+        data: {
+          status: status.status,
+          progressMessage:
+            status.progressMessage ??
+            (status.status === "PROCESSING"
+              ? "Building your 3D model..."
+              : "Understanding your design..."),
+        },
+        include: { design: { select: { designId: true } } },
+      });
+      return toJobView(mid);
+    }
+
+    const result = await provider.getResult(providerJobId);
+    if (!result?.modelUrl) {
+      const waiting = await prisma.generationJob.update({
+        where: { id: job.id },
+        data: {
+          status: "PROCESSING",
+          progressMessage: "Preparing your interactive preview...",
+        },
+        include: { design: { select: { designId: true } } },
+      });
+      return toJobView(waiting);
+    }
+    modelUrl = result.modelUrl;
+    previewUrl = result.previewImageUrl ?? job.conceptImageUrl;
+    nextStatus = "COMPLETED";
+    progressMessage = "Preparing your interactive preview...";
   }
 
-  if (status.status !== "COMPLETED") {
+  if (nextStatus !== "COMPLETED" || !modelUrl) {
     const mid = await prisma.generationJob.update({
       where: { id: job.id },
       data: {
-        status: status.status,
-        progressMessage:
-          status.progressMessage ??
-          (status.status === "PROCESSING"
-            ? "Building your 3D model..."
-            : "Understanding your design..."),
+        status: nextStatus,
+        progressMessage,
+        error: null,
       },
       include: { design: { select: { designId: true } } },
     });
     return toJobView(mid);
   }
 
-  const result = await provider.getResult(providerJobId);
-  if (!result?.modelUrl) {
-    const waiting = await prisma.generationJob.update({
-      where: { id: job.id },
-      data: {
-        status: "PROCESSING",
-        progressMessage: "Preparing your interactive preview...",
-      },
-      include: { design: { select: { designId: true } } },
-    });
-    return toJobView(waiting);
-  }
-
   const completed = await prisma.generationJob.update({
     where: { id: job.id },
     data: {
       status: "COMPLETED",
-      modelUrl: result.modelUrl,
-      previewUrl: result.previewImageUrl ?? job.conceptImageUrl,
+      modelUrl,
+      previewUrl: previewUrl ?? job.conceptImageUrl,
       progressMessage: "Preparing your interactive preview...",
       completedAt: new Date(),
       error: null,

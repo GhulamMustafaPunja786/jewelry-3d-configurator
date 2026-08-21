@@ -36,6 +36,7 @@ export const envSchema = z.object({
   AI3D_MOCK_DELAY_MS: z.coerce.number().optional().default(2500),
   IMAGE_PROVIDER: optionalString,
   IMAGE_PROVIDER_URL: optionalString,
+  FREEPIK_API_KEY: optionalString,
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),

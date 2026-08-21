@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img" aria-label="Rose gold diamond ring concept">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#fffaf3"/>
+      <stop offset="100%" stop-color="#efe6d8"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e8b4b8"/>
+      <stop offset="50%" stop-color="#b76e79"/>
+      <stop offset="100%" stop-color="#8a4a55"/>
+    </linearGradient>
+    <linearGradient id="diamond" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="45%" stop-color="#e8eefc"/>
+      <stop offset="100%" stop-color="#9eb0d8"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#bg)"/>
+  <!-- band -->
+  <ellipse cx="400" cy="480" rx="170" ry="55" fill="none" stroke="url(#gold)" stroke-width="38"/>
+  <ellipse cx="400" cy="480" rx="170" ry="55" fill="none" stroke="#f3d5d8" stroke-width="6" opacity="0.55"/>
+  <!-- setting -->
+  <rect x="372" y="360" width="56" height="50" rx="6" fill="url(#gold)"/>
+  <!-- center diamond -->
+  <polygon points="400,250 455,330 400,370 345,330" fill="url(#diamond)" stroke="#c5d0ea" stroke-width="2"/>
+  <polygon points="400,250 430,310 400,330 370,310" fill="#ffffff" opacity="0.55"/>
+  <!-- halo -->
+  <circle cx="330" cy="350" r="12" fill="url(#diamond)" stroke="#c5d0ea"/>
+  <circle cx="470" cy="350" r="12" fill="url(#diamond)" stroke="#c5d0ea"/>
+  <circle cx="350" cy="400" r="10" fill="url(#diamond)" stroke="#c5d0ea"/>
+  <circle cx="450" cy="400" r="10" fill="url(#diamond)" stroke="#c5d0ea"/>
+  <circle cx="375" cy="330" r="9" fill="url(#diamond)" stroke="#c5d0ea"/>
+  <circle cx="425" cy="330" r="9" fill="url(#diamond)" stroke="#c5d0ea"/>
+  <text x="400" y="640" text-anchor="middle" font-family="Georgia, serif" font-size="22" fill="#8a7038">Diamond solitaire concept</text>
+  <text x="400" y="675" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="#78716c">Preview illustration · final piece confirmed by atelier</text>
+</svg>

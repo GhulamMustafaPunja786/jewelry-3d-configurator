@@ -13,6 +13,8 @@ export function DesignReview({
   onSelectVersion,
   onUseDesign,
   onGenerateAnother,
+  onEditRequest,
+  onStartOver,
   regenerating,
 }: {
   versions: GeneratorVersion[];
@@ -20,6 +22,8 @@ export function DesignReview({
   onSelectVersion: (versionId: string) => void;
   onUseDesign: () => void;
   onGenerateAnother: (feedback?: string) => Promise<void> | void;
+  onEditRequest: () => void;
+  onStartOver: () => void;
   regenerating?: boolean;
 }) {
   const [feedback, setFeedback] = useState("");
@@ -34,22 +38,40 @@ export function DesignReview({
         <p className="mt-2 text-sm text-[var(--color-ink-muted)]">
           Generate a piece to review it here.
         </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Button type="button" onClick={onEditRequest}>
+            Back to form
+          </Button>
+          <Button type="button" variant="secondary" onClick={onStartOver}>
+            Start over
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-gold-deep)]">
-          Design review · Version {selected.versionNumber}
-        </p>
-        <h2 className="font-display mt-2 text-3xl text-[var(--color-ink)]">
-          Explore your piece
-        </h2>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--color-ink-muted)]">
-          {VISUALIZATION_DISCLAIMER}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-gold-deep)]">
+            Design review · Version {selected.versionNumber}
+          </p>
+          <h2 className="font-display mt-2 text-3xl text-[var(--color-ink)]">
+            Explore your piece
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-[var(--color-ink-muted)]">
+            {VISUALIZATION_DISCLAIMER}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="ghost" onClick={onEditRequest}>
+            Edit request
+          </Button>
+          <Button type="button" variant="secondary" onClick={onStartOver}>
+            Start over
+          </Button>
+        </div>
       </div>
 
       <GlbJewelryViewerDynamic
@@ -77,6 +99,7 @@ export function DesignReview({
           </p>
         </div>
       ) : null}
+
       {versions.length > 1 ? (
         <div className="flex flex-wrap gap-2">
           {versions.map((v) => (
@@ -119,6 +142,9 @@ export function DesignReview({
           onClick={() => onGenerateAnother(feedback.trim() || undefined)}
         >
           {regenerating ? "Generating…" : "Generate another"}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onEditRequest}>
+          Back to form
         </Button>
       </div>
     </div>

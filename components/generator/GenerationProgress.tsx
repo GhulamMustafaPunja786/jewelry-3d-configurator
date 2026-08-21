@@ -1,13 +1,16 @@
 "use client";
 
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Button } from "@/components/ui/Button";
 
 export function GenerationProgress({
   progressMessage,
   designId,
+  onCancel,
 }: {
   progressMessage?: string | null;
   designId?: string | null;
+  onCancel?: () => void;
 }) {
   const message =
     progressMessage?.trim() ||
@@ -30,6 +33,11 @@ export function GenerationProgress({
         <p className="mt-6 text-xs tracking-wide text-[var(--color-ink-muted)]">
           Draft reference · {designId}
         </p>
+      ) : null}
+      {onCancel ? (
+        <Button type="button" variant="ghost" className="mt-8" onClick={onCancel}>
+          Cancel and edit request
+        </Button>
       ) : null}
     </div>
   );

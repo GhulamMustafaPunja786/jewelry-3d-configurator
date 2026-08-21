@@ -51,6 +51,7 @@ export type GeneratorState = {
   setStep: (step: GeneratorStep) => void;
   setSubmitted: (designId: string, emailWarning: boolean) => void;
   reset: () => void;
+  backToForm: () => void;
 };
 
 const defaultRequest: JewelryGenerationRequest = {
@@ -158,6 +159,14 @@ export const useGeneratorStore = create<GeneratorState>()(
           step: "request",
           emailWarning: false,
         }),
+
+      backToForm: () =>
+        set({
+          step: "request",
+          currentJobId: null,
+          jobStatus: null,
+          progressMessage: null,
+        }),
     }),
     {
       name: "jewelry-ai-generator",
@@ -165,16 +174,32 @@ export const useGeneratorStore = create<GeneratorState>()(
         request: state.request,
         draftDesignId: state.draftDesignId,
         internalDesignCuid: state.internalDesignCuid,
-        currentJobId: state.currentJobId,
-        jobStatus: state.jobStatus,
-        progressMessage: state.progressMessage,
+        // Do not persist in-flight jobs — avoids stale "Unknown job id" loops
         versions: state.versions,
         selectedVersionId: state.selectedVersionId,
         pricing: state.pricing,
         customer: state.customer,
-        step: state.step,
+        step:
+          state.step === "generating"
+            ? state.versions.length
+              ? "review"
+              : "request"
+            : state.step,
         emailWarning: state.emailWarning,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        if (state.step === "generating") {
+          state.step = state.versions.length ? "review" : "request";
+          state.currentJobId = null;
+          state.jobStatus = null;
+          state.progressMessage = null;
+        }
+        // Recover stuck review with no versions
+        if (state.step === "review" && state.versions.length === 0) {
+          state.step = "request";
+        }
+      },
     },
   ),
 );

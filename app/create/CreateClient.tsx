@@ -53,6 +53,19 @@ function asJobStatus(value: string | undefined): GenerationJobStatus {
   return "QUEUED";
 }
 
+function friendlyError(message: string | null | undefined): string | null {
+  if (!message) return null;
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("unknown job") ||
+    lower.includes("job not found") ||
+    lower.includes("provider rejected")
+  ) {
+    return "That generation session expired. Use Edit request or Start over to try again.";
+  }
+  return message;
+}
+
 type StartResponse = {
   jobId?: string;
   designId?: string;
@@ -85,6 +98,7 @@ function CreateFlow() {
   const params = useSearchParams();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   const {
     request,
@@ -107,9 +121,14 @@ function CreateFlow() {
     setStep,
     setSubmitted,
     reset,
+    backToForm,
   } = useGeneratorStore();
 
   const typeParam = params.get("type");
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     if (isJewelryType(typeParam) && request.jewelryType !== typeParam) {
@@ -138,6 +157,16 @@ function CreateFlow() {
       validDays: QUOTATION_VALID_DAYS,
     };
   }, [pricing, draftDesignId, request, customer]);
+
+  function handleBackToForm() {
+    setError(null);
+    backToForm();
+  }
+
+  function handleStartOver() {
+    setError(null);
+    reset();
+  }
 
   async function startJob(
     nextRequest: JewelryGenerationRequest,
@@ -171,7 +200,11 @@ function CreateFlow() {
         internalDesignCuid: data.internalDesignCuid ?? null,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed");
+      setError(
+        friendlyError(
+          err instanceof Error ? err.message : "Generation failed",
+        ),
+      );
       setStep("request");
     } finally {
       setBusy(false);
@@ -179,6 +212,7 @@ function CreateFlow() {
   }
 
   useEffect(() => {
+    if (!hydrated) return;
     if (step !== "generating" || !currentJobId) return;
 
     let cancelled = false;
@@ -193,8 +227,8 @@ function CreateFlow() {
         if (cancelled) return;
 
         if (!res.ok) {
-          setError(data.error || "Polling failed");
-          setStep("request");
+          setError(friendlyError(data.error || "Polling failed"));
+          setStep(versions.length ? "review" : "request");
           return;
         }
 
@@ -212,12 +246,13 @@ function CreateFlow() {
 
         if (data.status === "COMPLETED") {
           if (data.versions?.length) setVersions(data.versions);
+          setError(null);
           setStep("review");
           return;
         }
 
         if (data.status === "FAILED") {
-          setError(data.error || "Generation failed");
+          setError(friendlyError(data.error || "Generation failed"));
           setStep(versions.length ? "review" : "request");
           return;
         }
@@ -225,7 +260,11 @@ function CreateFlow() {
         timer = setTimeout(poll, 1200);
       } catch (err) {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Polling failed");
+        setError(
+          friendlyError(
+            err instanceof Error ? err.message : "Polling failed",
+          ),
+        );
         setStep(versions.length ? "review" : "request");
       }
     };
@@ -237,6 +276,7 @@ function CreateFlow() {
       if (timer) clearTimeout(timer);
     };
   }, [
+    hydrated,
     step,
     currentJobId,
     setJob,
@@ -262,6 +302,7 @@ function CreateFlow() {
   function handleUseDesign() {
     const estimate = estimateAiJewelryPrice(request);
     setPricing(estimate);
+    setError(null);
     setStep("quotation");
   }
 
@@ -306,6 +347,14 @@ function CreateFlow() {
     }
   }
 
+  if (!hydrated) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+        <LoadingSpinner label="Loading studio…" />
+      </main>
+    );
+  }
+
   if (step === "submitted") {
     return (
       <div className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6">
@@ -324,14 +373,7 @@ function CreateFlow() {
           </p>
         ) : null}
         <div className="mt-8 flex justify-center gap-3">
-          <Button
-            onClick={() => {
-              reset();
-              setStep("request");
-            }}
-          >
-            Create another
-          </Button>
+          <Button onClick={handleStartOver}>Create another</Button>
           <Link href="/">
             <Button variant="secondary">Home</Button>
           </Link>
@@ -342,23 +384,43 @@ function CreateFlow() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <div className="mb-8">
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-gold-deep)]">
-          AI jewelry studio
-        </p>
-        <h1 className="font-display mt-2 text-4xl text-[var(--color-ink)] sm:text-5xl">
-          Create your jewelry
-        </h1>
-        <p className="mt-3 max-w-2xl text-[var(--color-ink-muted)]">
-          Describe the piece you imagine. We generate an interactive 3D
-          visualization and an atelier estimate for specialist review.
-        </p>
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-gold-deep)]">
+            AI jewelry studio
+          </p>
+          <h1 className="font-display mt-2 text-4xl text-[var(--color-ink)] sm:text-5xl">
+            Create your jewelry
+          </h1>
+          <p className="mt-3 max-w-2xl text-[var(--color-ink-muted)]">
+            Describe the piece you imagine. We generate an interactive 3D
+            visualization and an atelier estimate for specialist review.
+          </p>
+        </div>
+        {step !== "request" ? (
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="ghost" onClick={handleBackToForm}>
+              Back to form
+            </Button>
+            <Button type="button" variant="secondary" onClick={handleStartOver}>
+              Start over
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       {error ? (
-        <p className="mb-6 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </p>
+        <div className="mb-6 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <p>{error}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button type="button" variant="secondary" onClick={handleBackToForm}>
+              Edit request
+            </Button>
+            <Button type="button" variant="ghost" onClick={handleStartOver}>
+              Start over
+            </Button>
+          </div>
+        </div>
       ) : null}
 
       {step === "request" ? (
@@ -375,6 +437,7 @@ function CreateFlow() {
         <GenerationProgress
           progressMessage={progressMessage}
           designId={draftDesignId}
+          onCancel={handleBackToForm}
         />
       ) : null}
 
@@ -385,6 +448,8 @@ function CreateFlow() {
           onSelectVersion={handleSelectVersion}
           onUseDesign={handleUseDesign}
           regenerating={busy}
+          onEditRequest={handleBackToForm}
+          onStartOver={handleStartOver}
           onGenerateAnother={async (feedback) => {
             await startJob(request, feedback);
           }}
@@ -439,6 +504,9 @@ function CreateFlow() {
                 >
                   Back to review
                 </Button>
+                <Button type="button" variant="ghost" onClick={handleBackToForm}>
+                  Back to form
+                </Button>
               </div>
             </form>
           </div>
@@ -447,8 +515,8 @@ function CreateFlow() {
 
       {jobStatus === "FAILED" && step === "review" ? (
         <p className="mt-4 text-sm text-amber-800">
-          The latest generation attempt failed. You can still use a previous
-          version or try again.
+          The latest generation attempt failed. Use a previous version, generate
+          again, or go back to the form.
         </p>
       ) : null}
     </main>

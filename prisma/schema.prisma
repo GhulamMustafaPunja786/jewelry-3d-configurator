@@ -1,0 +1,184 @@
+// Jewelry Configurator — Prisma schema
+// Local MVP: SQLite via DATABASE_URL="file:./dev.db"
+// Production: change provider to "postgresql" and set DATABASE_URL to Postgres/Supabase
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Customer {
+  id         String      @id @default(cuid())
+  name       String
+  email      String
+  phone      String?
+  country    String?
+  message    String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  designs    Design[]
+  quotations Quotation[]
+
+  @@index([email])
+}
+
+model JewelryProduct {
+  id          String         @id @default(cuid())
+  category    String
+  name        String
+  slug        String         @unique
+  description String?
+  basePrice   Float          @default(0)
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  models      JewelryModel[]
+}
+
+model JewelryModel {
+  id          String         @id @default(cuid())
+  productId   String
+  product     JewelryProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  modelUrl    String?
+  thumbnail   String?
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  designItems DesignItem[]
+
+  @@unique([productId, slug])
+}
+
+model Metal {
+  id           String   @id @default(cuid())
+  name         String
+  code         String   @unique
+  type         String
+  karat        Int?
+  color        String
+  colorHex     String
+  metalness    Float    @default(1)
+  roughness    Float    @default(0.25)
+  pricePerGram Float
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Stone {
+  id            String   @id @default(cuid())
+  name          String
+  code          String   @unique
+  type          String
+  shape         String?
+  colorHex      String
+  transmission  Float    @default(0.9)
+  ior           Float    @default(2.4)
+  pricePerCarat Float
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PricingRule {
+  id          String   @id @default(cuid())
+  name        String
+  category    String?
+  ruleType    String
+  valueType   String
+  value       Float
+  priority    Int      @default(0)
+  isActive    Boolean  @default(true)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Design {
+  id              String       @id @default(cuid())
+  designId        String       @unique
+  customerId      String?
+  customer        Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  status          String       @default("NEW")
+  jewelryType     String
+  configurationJson String
+  modelReference  String?
+  previewPath     String?
+  pdfPath         String?
+  subtotal        Float
+  discount        Float        @default(0)
+  tax             Float        @default(0)
+  total           Float
+  currency        String       @default("USD")
+  emailWarning    Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  items           DesignItem[]
+  quotations      Quotation[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DesignItem {
+  id         String        @id @default(cuid())
+  designId   String
+  design     Design        @relation(fields: [designId], references: [id], onDelete: Cascade)
+  modelId    String?
+  model      JewelryModel? @relation(fields: [modelId], references: [id], onDelete: SetNull)
+  label      String
+  quantity   Int           @default(1)
+  unitPrice  Float
+  lineTotal  Float
+  createdAt  DateTime      @default(now())
+}
+
+model Quotation {
+  id          String          @id @default(cuid())
+  quotationId String          @unique
+  designId    String
+  design      Design          @relation(fields: [designId], references: [id], onDelete: Cascade)
+  customerId  String?
+  customer    Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  status      String          @default("PENDING")
+  subtotal    Float
+  discount    Float           @default(0)
+  tax         Float           @default(0)
+  total       Float
+  currency    String          @default("USD")
+  breakdownJson String
+  termsJson   String?
+  pdfPath     String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  items       QuotationItem[]
+
+  @@index([status])
+}
+
+model QuotationItem {
+  id          String    @id @default(cuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int       @default(1)
+  unitPrice   Float
+  lineTotal   Float
+  createdAt   DateTime  @default(now())
+}

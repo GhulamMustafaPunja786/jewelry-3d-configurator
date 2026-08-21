@@ -26,7 +26,8 @@ function SubmitContent() {
         {designId ? (
           <>
             {" "}
-            Reference: <strong className="text-[var(--color-ink)]">{designId}</strong>
+            Reference:{" "}
+            <strong className="text-[var(--color-ink)]">{designId}</strong>
           </>
         ) : null}
       </p>
@@ -37,15 +38,16 @@ function SubmitContent() {
         </p>
       ) : null}
       <div className="mt-8 flex flex-wrap justify-center gap-3">
-        {designId ? (
-          <Link href={`/design/${designId}`}>
-            <Button variant="secondary">View design</Button>
-          </Link>
-        ) : null}
         <Link href="/design?category=ring" onClick={() => reset()}>
           <Button>Start another</Button>
         </Link>
+        <Link href="/">
+          <Button variant="secondary">Home</Button>
+        </Link>
       </div>
+      <p className="mt-6 text-xs text-[var(--color-ink-muted)]">
+        The atelier team can review your submission in the admin dashboard.
+      </p>
     </main>
   );
 }

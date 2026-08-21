@@ -3,6 +3,13 @@ import { format } from "date-fns";
 import type { QuotationViewModel } from "@/types/design";
 import { formatCurrency } from "@/lib/utils";
 
+function pdfSafe(input: string): string {
+  return input
+    .normalize("NFKD")
+    .replace(/[^\x20-\x7E]/g, "?")
+    .slice(0, 500);
+}
+
 export async function buildQuotationPdf(
   view: QuotationViewModel & { designId: string },
 ): Promise<Uint8Array> {
@@ -23,7 +30,7 @@ export async function buildQuotationPdf(
     bold = false,
     color = ink,
   ) => {
-    page.drawText(text, {
+    page.drawText(pdfSafe(text), {
       x: margin,
       y,
       size,
@@ -85,8 +92,8 @@ export async function buildQuotationPdf(
   draw("Pricing", 12, true);
   y -= 16;
   for (const line of view.pricing.lines) {
-    const left = line.label;
-    const right = formatCurrency(line.amount, view.pricing.currency);
+    const left = pdfSafe(line.label);
+    const right = pdfSafe(formatCurrency(line.amount, view.pricing.currency));
     page.drawText(left, { x: margin, y, size: 10, font, color: ink });
     page.drawText(right, {
       x: 595 - margin - font.widthOfTextAtSize(right, 10),
@@ -114,18 +121,19 @@ export async function buildQuotationPdf(
   ] as const;
 
   for (const [label, amount] of totals) {
-    const right = formatCurrency(amount, view.pricing.currency);
-    page.drawText(label, {
+    const right = pdfSafe(formatCurrency(amount, view.pricing.currency));
+    const size = label === "Total" ? 12 : 10;
+    page.drawText(pdfSafe(label), {
       x: margin,
       y,
-      size: label === "Total" ? 12 : 10,
+      size,
       font: label === "Total" ? fontBold : font,
       color: ink,
     });
     page.drawText(right, {
-      x: 595 - margin - font.widthOfTextAtSize(right, label === "Total" ? 12 : 10),
+      x: 595 - margin - font.widthOfTextAtSize(right, size),
       y,
-      size: label === "Total" ? 12 : 10,
+      size,
       font: label === "Total" ? fontBold : font,
       color: ink,
     });
@@ -136,7 +144,7 @@ export async function buildQuotationPdf(
   draw("Terms", 12, true);
   y -= 16;
   for (const term of view.terms) {
-    const wrapped = wrapText(term, 90);
+    const wrapped = wrapText(pdfSafe(term), 90);
     for (const w of wrapped) {
       if (y < 60) break;
       draw(w, 8, false, muted);

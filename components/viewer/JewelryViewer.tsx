@@ -1,17 +1,14 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import {
-  ContactShadows,
-  Environment,
-  OrbitControls,
-} from "@react-three/drei";
+import { ContactShadows, OrbitControls } from "@react-three/drei";
 import { Suspense, useMemo } from "react";
 import * as THREE from "three";
 import { getMetalByCode } from "@/data/metals";
 import { getStoneByCode } from "@/data/stones";
 import type { RingConfig } from "@/types/jewelry";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { ViewerErrorBoundary } from "@/components/viewer/ViewerErrorBoundary";
 
 /**
  * Procedural ring (torus + gem) used when GLB assets are missing.
@@ -71,39 +68,55 @@ function ProceduralRing({ config }: { config: RingConfig }) {
   );
 }
 
+function ViewerCanvas({ config }: { config: RingConfig }) {
+  return (
+    <Canvas
+      camera={{ position: [0, 1.2, 3.2], fov: 35 }}
+      dpr={[1, 1.75]}
+      gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+      onCreated={({ gl }) => {
+        gl.setClearColor("#f0ebe1", 1);
+      }}
+    >
+      <ambientLight intensity={0.85} />
+      <directionalLight position={[4, 6, 2]} intensity={1.35} />
+      <directionalLight position={[-3, 2, -2]} intensity={0.45} />
+      <hemisphereLight args={["#fff8ef", "#cfc4b4", 0.55]} />
+      <ProceduralRing config={config} />
+      <ContactShadows
+        position={[0, -1.1, 0]}
+        opacity={0.35}
+        scale={8}
+        blur={2.5}
+      />
+      <OrbitControls
+        enablePan={false}
+        minDistance={2}
+        maxDistance={6}
+        autoRotate
+        autoRotateSpeed={0.6}
+      />
+    </Canvas>
+  );
+}
+
 export function JewelryViewer({ config }: { config: RingConfig }) {
   return (
-    <div className="relative h-[360px] w-full overflow-hidden border border-[var(--color-border)] bg-[linear-gradient(160deg,#faf7f0_0%,#f0ebe1_55%,#e8e0d2_100%)] sm:h-[480px]">
-      <Suspense
-        fallback={
-          <div className="flex h-full items-center justify-center">
-            <LoadingSpinner label="Preparing 3D preview…" />
-          </div>
-        }
-      >
-        <Canvas camera={{ position: [0, 1.2, 3.2], fov: 35 }} dpr={[1, 2]}>
-          <ambientLight intensity={0.55} />
-          <directionalLight position={[4, 6, 2]} intensity={1.2} />
-          <Environment preset="studio" />
-          <ProceduralRing config={config} />
-          <ContactShadows
-            position={[0, -1.1, 0]}
-            opacity={0.35}
-            scale={8}
-            blur={2.5}
-          />
-          <OrbitControls
-            enablePan={false}
-            minDistance={2}
-            maxDistance={6}
-            autoRotate
-            autoRotateSpeed={0.6}
-          />
-        </Canvas>
-      </Suspense>
-      <p className="pointer-events-none absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-        Drag to orbit · scroll to zoom
-      </p>
-    </div>
+    <ViewerErrorBoundary>
+      <div className="relative h-[360px] w-full overflow-hidden border border-[var(--color-border)] bg-[linear-gradient(160deg,#faf7f0_0%,#f0ebe1_55%,#e8e0d2_100%)] sm:h-[480px]">
+        <Suspense
+          fallback={
+            <div className="flex h-full items-center justify-center">
+              <LoadingSpinner label="Preparing 3D preview…" />
+            </div>
+          }
+        >
+          <ViewerCanvas config={config} />
+        </Suspense>
+        <p className="pointer-events-none absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
+          Drag to orbit · scroll to zoom
+        </p>
+      </div>
+    </ViewerErrorBoundary>
   );
 }

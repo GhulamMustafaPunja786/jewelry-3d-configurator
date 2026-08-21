@@ -53,10 +53,14 @@ export async function POST(request: Request) {
 
     let previewPath: string | null = null;
     if (previewDataUrl) {
-      previewPath = await saveDataUrlImage(
-        `previews/${designId}`,
-        previewDataUrl,
-      );
+      try {
+        previewPath = await saveDataUrlImage(
+          `previews/${designId}`,
+          previewDataUrl,
+        );
+      } catch (previewError) {
+        console.error("[api/designs] preview save failed", previewError);
+      }
     }
 
     const view = {
@@ -69,11 +73,17 @@ export async function POST(request: Request) {
       validDays: QUOTATION_VALID_DAYS,
     };
 
-    const pdfBytes = await buildQuotationPdf(view);
-    const pdfPath = await saveBuffer(
-      `pdfs/${designId}.pdf`,
-      Buffer.from(pdfBytes),
-    );
+    let pdfPath: string | null = null;
+    try {
+      const pdfBytes = await buildQuotationPdf(view);
+      pdfPath = await saveBuffer(
+        `pdfs/${designId}.pdf`,
+        Buffer.from(pdfBytes),
+        "application/pdf",
+      );
+    } catch (pdfError) {
+      console.error("[api/designs] pdf generation failed", pdfError);
+    }
 
     const design = await prisma.design.create({
       data: {
@@ -125,18 +135,29 @@ export async function POST(request: Request) {
       include: { quotations: true },
     });
 
-    const emailResult = await sendDesignNotification({
-      designId,
-      customerEmail: customer.email,
-      customerName: customer.name,
-      totalLabel: formatCurrency(pricing.total, pricing.currency),
-    });
+    let emailWarning = true;
+    let warning =
+      "Email not configured — design saved without notification.";
+    try {
+      const emailResult = await sendDesignNotification({
+        designId,
+        customerEmail: customer.email,
+        customerName: customer.name,
+        totalLabel: formatCurrency(pricing.total, pricing.currency),
+      });
+      emailWarning = !emailResult.sent || Boolean(emailResult.warning);
+      warning = emailResult.warning ?? warning;
+    } catch (emailError) {
+      console.error("[api/designs] email failed", emailError);
+    }
 
-    await sendWhatsAppStub(
-      `New design ${designId} from ${customer.name} — ${formatCurrency(pricing.total, pricing.currency)}`,
-    );
-
-    const emailWarning = !emailResult.sent || Boolean(emailResult.warning);
+    try {
+      await sendWhatsAppStub(
+        `New design ${designId} from ${customer.name} — ${formatCurrency(pricing.total, pricing.currency)}`,
+      );
+    } catch (waError) {
+      console.error("[api/designs] whatsapp stub failed", waError);
+    }
 
     if (emailWarning) {
       await prisma.design.update({
@@ -149,7 +170,7 @@ export async function POST(request: Request) {
       designId,
       quotationId,
       emailWarning,
-      warning: emailResult.warning,
+      warning: emailWarning ? warning : undefined,
     });
   } catch (error) {
     console.error("[api/designs]", error);

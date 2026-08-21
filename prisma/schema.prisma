@@ -1,13 +1,12 @@
 // Jewelry Configurator — Prisma schema
-// Local MVP: SQLite via DATABASE_URL="file:./dev.db"
-// Production: change provider to "postgresql" and set DATABASE_URL to Postgres/Supabase
+// Uses PostgreSQL (Prisma Postgres / Neon / Supabase). Set DATABASE_URL in .env
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

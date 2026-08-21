@@ -46,22 +46,30 @@ export async function sendDesignNotification(options: {
   customerName: string;
   totalLabel: string;
 }): Promise<EmailResult> {
-  const env = getEnv();
-  const adminTo = env.EMAIL_TO_ADMIN || env.OWNER_EMAIL;
+  try {
+    const env = getEnv();
+    const adminTo = env.EMAIL_TO_ADMIN || env.OWNER_EMAIL;
 
-  if (!isEmailConfigured() || !adminTo) {
+    if (!isEmailConfigured() || !adminTo) {
+      return {
+        sent: false,
+        warning: "Email not configured — design saved without notification.",
+      };
+    }
+
+    return emailAdapter.send({
+      to: adminTo,
+      subject: `New design ${options.designId}`,
+      text: `${options.customerName} (${options.customerEmail}) submitted ${options.designId}. Total: ${options.totalLabel}`,
+      html: `<p><strong>${options.customerName}</strong> submitted design <strong>${options.designId}</strong>.</p><p>Total: ${options.totalLabel}</p>`,
+    });
+  } catch (error) {
+    console.error("[email] notification failed", error);
     return {
       sent: false,
       warning: "Email not configured — design saved without notification.",
     };
   }
-
-  return emailAdapter.send({
-    to: adminTo,
-    subject: `New design ${options.designId}`,
-    text: `${options.customerName} (${options.customerEmail}) submitted ${options.designId}. Total: ${options.totalLabel}`,
-    html: `<p><strong>${options.customerName}</strong> submitted design <strong>${options.designId}</strong>.</p><p>Total: ${options.totalLabel}</p>`,
-  });
 }
 
 export type { EmailPayload, EmailResult, EmailAdapter };

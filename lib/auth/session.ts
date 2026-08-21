@@ -1,15 +1,15 @@
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT } from "jose";
 import { cookies } from "next/headers";
+import {
+  SESSION_COOKIE,
+  verifySessionToken,
+  type SessionPayload,
+} from "@/lib/auth/session-edge";
 
-export const SESSION_COOKIE = "jewelry_admin_session";
+export { SESSION_COOKIE, verifySessionToken };
+export type { SessionPayload };
+
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
-
-export type SessionPayload = {
-  sub: string;
-  email: string;
-  role: string;
-  name?: string;
-};
 
 function getSecretKey(): Uint8Array {
   const secret = process.env.SESSION_SECRET;
@@ -32,23 +32,6 @@ export async function createSessionToken(
     .setIssuedAt()
     .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
     .sign(getSecretKey());
-}
-
-export async function verifySessionToken(
-  token: string,
-): Promise<SessionPayload | null> {
-  try {
-    const { payload } = await jwtVerify(token, getSecretKey());
-    if (!payload.sub || typeof payload.email !== "string") return null;
-    return {
-      sub: payload.sub,
-      email: payload.email,
-      role: typeof payload.role === "string" ? payload.role : "ADMIN",
-      name: typeof payload.name === "string" ? payload.name : undefined,
-    };
-  } catch {
-    return null;
-  }
 }
 
 export async function setSessionCookie(token: string): Promise<void> {

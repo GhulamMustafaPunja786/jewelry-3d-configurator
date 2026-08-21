@@ -9,7 +9,7 @@ Production-oriented MVP for configuring rings in 3D, generating quotations (PDF)
 - **Three.js / React Three Fiber / Drei** — live ring preview
 - **Zustand** — configurator state
 - **React Hook Form + Zod** — validation
-- **Prisma 5.22 + SQLite** — local MVP database (switchable to PostgreSQL)
+- **Prisma 5.22 + PostgreSQL** — Prisma Postgres / Neon / Supabase compatible
 - **jose + bcryptjs** — admin session cookies
 - **pdf-lib** — quotation PDFs
 
@@ -25,8 +25,8 @@ Other jewelry categories share the same architecture and show as **Coming soon**
 # 1. Install
 npm install
 
-# 2. Copy env (already present locally as .env — see .env.example)
-# DATABASE_URL="file:./dev.db"
+# 2. Copy env from .env.example → .env
+# DATABASE_URL must be a PostgreSQL connection string
 # ADMIN_PASSWORD=...
 # SESSION_SECRET=... (min 32 chars)
 
@@ -44,6 +44,12 @@ Open [http://localhost:3000](http://localhost:3000).
 Admin: [http://localhost:3000/admin/login](http://localhost:3000/admin/login)  
 Default seed user: `admin@jewelry.local` / password from `ADMIN_PASSWORD` (default `ChangeMeAdmin123!`).
 
+## Production notes
+
+- Set `DATABASE_URL`, `SESSION_SECRET`, and `NEXT_PUBLIC_APP_URL` in your host (Vercel).
+- Email/WhatsApp are optional — submissions still succeed without them.
+- Temporary Prisma Postgres databases should be **claimed** for permanence (see claim URL from `create-db`).
+
 ## Scripts
 
 | Script | Description |
@@ -54,7 +60,7 @@ Default seed user: `admin@jewelry.local` / password from `ADMIN_PASSWORD` (defau
 | `npm run lint` | ESLint |
 | `npm run format` | Prettier |
 | `npm run db:generate` | Prisma client |
-| `npm run db:push` | Push schema to SQLite |
+| `npm run db:push` | Push schema to PostgreSQL |
 | `npm run db:seed` | Demo metals, stones, pricing, admin |
 | `npm run db:studio` | Prisma Studio |
 

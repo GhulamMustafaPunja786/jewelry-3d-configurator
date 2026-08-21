@@ -96,15 +96,26 @@ export function priceRingConfig(
   const stone = getStoneByCode(config.stoneCode);
   const model = getModelBySlug(config.modelSlug);
 
-  if (!metal) throw new Error(`Unknown metal: ${config.metalCode}`);
-  if (!stone) throw new Error(`Unknown stone: ${config.stoneCode}`);
-  if (!model) throw new Error(`Unknown model: ${config.modelSlug}`);
+  if (!metal || !stone || !model) {
+    console.warn("[pricing] falling back to defaults", {
+      metalCode: config.metalCode,
+      stoneCode: config.stoneCode,
+      modelSlug: config.modelSlug,
+    });
+  }
+
+  const resolvedMetal = metal ?? {
+    pricePerGram: 65,
+    density: 15.6,
+  };
+  const resolvedStone = stone ?? { pricePerCarat: 4200 };
+  const resolvedModel = model ?? { baseWeightGrams: 4.2 };
 
   const metalWeightGrams = estimateRingMetalWeightGrams(
     config.ringSize,
     config.bandWidthMm,
-    model.baseWeightGrams,
-    metal.density,
+    resolvedModel.baseWeightGrams,
+    resolvedMetal.density,
   );
 
   const extras: PricingLine[] = [];
@@ -120,14 +131,14 @@ export function priceRingConfig(
   }
 
   return calculatePricing({
-    metalPricePerGram: metal.pricePerGram,
+    metalPricePerGram: resolvedMetal.pricePerGram,
     metalWeightGrams,
-    stonePricePerCarat: stone.pricePerCarat,
+    stonePricePerCarat: resolvedStone.pricePerCarat,
     stoneCarats: config.stoneCarats,
     laborFixed: options?.laborFixed,
     makingChargePercent: options?.makingChargePercent,
-    taxRate: options?.taxRate ?? Number(process.env.TAX_RATE ?? DEFAULT_TAX_RATE),
-    currency: options?.currency ?? process.env.CURRENCY ?? "USD",
+    taxRate: options?.taxRate ?? Number(process.env.TAX_RATE || DEFAULT_TAX_RATE),
+    currency: options?.currency ?? (process.env.CURRENCY?.trim() || "USD"),
     extras,
   });
 }

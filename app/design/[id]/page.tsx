@@ -5,7 +5,6 @@ import { QuotationView } from "@/components/quotation/QuotationView";
 import { QUOTATION_TERMS, QUOTATION_VALID_DAYS } from "@/data/terms";
 import type { RingConfig } from "@/types/jewelry";
 import type { PricingBreakdown } from "@/types/pricing";
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 
 type PageProps = {
@@ -80,9 +79,13 @@ export default async function DesignDetailPage({ params }: PageProps) {
           <h1 className="font-display text-3xl">{design.designId}</h1>
         </div>
         {quotation ? (
-          <Link href={`/api/quotations/${quotation.id}/pdf`} target="_blank">
+          <a
+            href={`/api/quotations/${quotation.id}/pdf`}
+            target="_blank"
+            rel="noreferrer"
+          >
             <Button variant="secondary">Download PDF</Button>
-          </Link>
+          </a>
         ) : null}
       </div>
       <QuotationView view={view} showCustomer />

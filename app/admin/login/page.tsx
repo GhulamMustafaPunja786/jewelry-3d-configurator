@@ -10,7 +10,9 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") || "/admin";
+  const rawNext = params.get("next") || "/admin";
+  const next =
+    rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/admin";
   const [email, setEmail] = useState("admin@jewelry.local");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);

@@ -1,13 +1,27 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { QuotationView } from "@/components/quotation/QuotationView";
 import { CustomerForm } from "@/components/forms/CustomerForm";
 import { Button } from "@/components/ui/Button";
 import { useConfiguratorStore } from "@/store/configurator-store";
 import { priceRingConfig } from "@/lib/pricing/engine";
 import type { CustomerInput } from "@/lib/validation/customer";
+import type { PricingBreakdown } from "@/types/pricing";
+
+function safePricing(
+  config: Parameters<typeof priceRingConfig>[0],
+  existing: PricingBreakdown | null,
+): PricingBreakdown | null {
+  if (existing) return existing;
+  try {
+    return priceRingConfig(config);
+  } catch (error) {
+    console.error("[quotation] pricing failed", error);
+    return null;
+  }
+}
 
 export default function QuotationPage() {
   const router = useRouter();
@@ -17,10 +31,24 @@ export default function QuotationPage() {
   const { config, pricing, getQuotationView, setSubmitted, setStep } =
     useConfiguratorStore();
 
-  const view = getQuotationView();
-  const resolvedPricing = pricing ?? priceRingConfig(config);
+  const resolvedPricing = useMemo(
+    () => safePricing(config, pricing),
+    [config, pricing],
+  );
+
+  const view = useMemo(() => {
+    try {
+      return getQuotationView();
+    } catch {
+      return null;
+    }
+  }, [getQuotationView]);
 
   async function handleSubmit(customer: CustomerInput) {
+    if (!resolvedPricing) {
+      setError("Unable to calculate pricing. Please edit your configuration.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -48,6 +76,24 @@ export default function QuotationPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (!resolvedPricing || !view) {
+    return (
+      <main className="mx-auto max-w-xl px-4 py-16 text-center sm:px-6">
+        <h1 className="font-display text-3xl">Quotation unavailable</h1>
+        <p className="mt-3 text-[var(--color-ink-muted)]">
+          Your configuration could not be priced. Please return to the design
+          studio and try again.
+        </p>
+        <Button
+          className="mt-6"
+          onClick={() => router.push("/design?category=ring")}
+        >
+          Back to design
+        </Button>
+      </main>
+    );
   }
 
   return (

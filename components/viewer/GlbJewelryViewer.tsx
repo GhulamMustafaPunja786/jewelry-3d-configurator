@@ -18,6 +18,10 @@ import {
 import * as THREE from "three";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Button } from "@/components/ui/Button";
+import {
+  CatalogSolitaireRing,
+  parseMockRingAppearance,
+} from "@/components/viewer/CatalogSolitaireRing";
 
 type GlbJewelryViewerProps = {
   modelUrl: string | null | undefined;
@@ -57,71 +61,8 @@ function upgradeStoneMaterial(
 function polishMetalMaterial(mat: THREE.MeshStandardMaterial) {
   mat.metalness = 1;
   mat.roughness = Math.min(mat.roughness ?? 0.2, 0.22);
-  mat.envMapIntensity = 1.35;
+  mat.envMapIntensity = 1.45;
   mat.needsUpdate = true;
-}
-
-/** Catalog-style procedural solitaire if GLB fails to load. */
-function ProceduralFallbackMesh() {
-  const metalMat = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: "#D4AF37",
-        metalness: 1,
-        roughness: 0.2,
-        envMapIntensity: 1.35,
-      }),
-    [],
-  );
-  const gemMat = useMemo(
-    () =>
-      new THREE.MeshPhysicalMaterial({
-        color: "#F4F7FF",
-        metalness: 0,
-        roughness: 0.02,
-        transmission: 0.88,
-        ior: 2.42,
-        thickness: 0.4,
-        transparent: true,
-        clearcoat: 1,
-        clearcoatRoughness: 0.02,
-        envMapIntensity: 1.4,
-      }),
-    [],
-  );
-
-  const prongs = useMemo(() => {
-    const items: { x: number; z: number }[] = [];
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-      items.push({ x: Math.cos(a) * 0.13, z: Math.sin(a) * 0.13 });
-    }
-    return items;
-  }, []);
-
-  return (
-    <group position={[0, -0.15, 0]}>
-      <mesh rotation={[Math.PI / 2, 0, 0]} material={metalMat} castShadow>
-        <torusGeometry args={[0.86, 0.07, 36, 128]} />
-      </mesh>
-      <mesh position={[0, 0.82, 0]} material={metalMat} castShadow>
-        <cylinderGeometry args={[0.09, 0.12, 0.1, 24, 1, true]} />
-      </mesh>
-      <mesh position={[0, 0.94, 0]} scale={[1, 1.1, 1]} material={gemMat} castShadow>
-        <octahedronGeometry args={[0.17, 2]} />
-      </mesh>
-      {prongs.map((p, i) => (
-        <group key={i}>
-          <mesh position={[p.x, 0.88, p.z]} material={metalMat} castShadow>
-            <cylinderGeometry args={[0.01, 0.015, 0.18, 8]} />
-          </mesh>
-          <mesh position={[p.x * 0.85, 0.98, p.z * 0.85]} material={metalMat}>
-            <sphereGeometry args={[0.012, 10, 10]} />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  );
 }
 
 function GlbModel({ url }: { url: string }) {
@@ -152,59 +93,68 @@ function GlbModel({ url }: { url: string }) {
 function ViewerCanvas({
   modelUrl,
   useFallback,
+  catalogAppearance,
 }: {
   modelUrl: string | null;
   useFallback: boolean;
+  catalogAppearance: ReturnType<typeof parseMockRingAppearance>;
 }) {
+  const showCatalog = Boolean(catalogAppearance) && !useFallback;
+
   return (
     <Canvas
-      camera={{ position: [0.55, 1.55, 2.85], fov: 30 }}
+      camera={{ position: [1.1, 1.35, 2.6], fov: 28 }}
       dpr={[1, 1.75]}
       gl={{
         antialias: true,
         alpha: true,
         powerPreference: "high-performance",
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.2,
+        toneMappingExposure: 1.25,
       }}
       onCreated={({ gl }) => {
         gl.setClearColor("#f0ebe1", 1);
         gl.outputColorSpace = THREE.SRGBColorSpace;
       }}
     >
-      <ambientLight intensity={0.25} />
-      <directionalLight position={[5, 8, 4]} intensity={1.45} color="#fff8f0" />
-      <directionalLight position={[-4, 3, -3]} intensity={0.55} color="#e8f0ff" />
-      <directionalLight position={[0, 4, 5]} intensity={0.4} color="#ffe8d0" />
+      <ambientLight intensity={0.2} />
+      <directionalLight position={[4, 7, 3]} intensity={1.5} color="#fff6ea" />
+      <directionalLight position={[-3, 2, -2]} intensity={0.65} color="#dfe9ff" />
       <spotLight
-        position={[2, 5, 3]}
-        angle={0.35}
-        penumbra={0.6}
-        intensity={0.8}
+        position={[2.5, 5, 2]}
+        angle={0.32}
+        penumbra={0.55}
+        intensity={1.1}
         color="#ffffff"
       />
       <Suspense fallback={null}>
-        <Environment preset="studio" environmentIntensity={0.85} />
+        <Environment preset="studio" environmentIntensity={1} />
       </Suspense>
-      {useFallback || !modelUrl ? (
-        <ProceduralFallbackMesh />
+
+      {showCatalog && catalogAppearance ? (
+        <CatalogSolitaireRing appearance={catalogAppearance} />
+      ) : useFallback || !modelUrl ? (
+        <CatalogSolitaireRing
+          appearance={{ metal: "yellow", variant: "solitaire", stone: "diamond" }}
+        />
       ) : (
         <GlbModel url={modelUrl} />
       )}
+
       <ContactShadows
         position={[0, -0.95, 0]}
-        opacity={0.28}
-        scale={6}
-        blur={2.8}
-        far={4}
+        opacity={0.22}
+        scale={5.5}
+        blur={3.2}
+        far={3.5}
       />
       <OrbitControls
         enablePan={false}
-        minDistance={1.8}
-        maxDistance={5.5}
-        target={[0, 0.45, 0]}
+        minDistance={1.6}
+        maxDistance={5}
+        target={[0, 0.55, 0]}
         autoRotate
-        autoRotateSpeed={0.45}
+        autoRotateSpeed={0.4}
       />
     </Canvas>
   );
@@ -242,8 +192,17 @@ export function GlbJewelryViewer({
   const [loadFailed, setLoadFailed] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
 
-  const showFallback = (loadFailed || !modelUrl) && allowProceduralFallback;
-  const showErrorOnly = (loadFailed || !modelUrl) && !allowProceduralFallback;
+  const catalogAppearance = useMemo(
+    () => parseMockRingAppearance(modelUrl),
+    [modelUrl],
+  );
+
+  // Mock catalog rings always render the live R3F solitaire (more realistic than baked GLB)
+  const useCatalog = Boolean(catalogAppearance);
+  const showFallback =
+    !useCatalog && (loadFailed || !modelUrl) && allowProceduralFallback;
+  const showErrorOnly =
+    !useCatalog && (loadFailed || !modelUrl) && !allowProceduralFallback;
 
   return (
     <div
@@ -286,25 +245,16 @@ export function GlbJewelryViewer({
           >
             <ViewerCanvas
               modelUrl={modelUrl ?? null}
-              useFallback={showFallback || !modelUrl}
+              useFallback={showFallback}
+              catalogAppearance={catalogAppearance}
             />
           </GlbLoadErrorBoundary>
         </Suspense>
       )}
 
-      {showFallback ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-[rgba(32,28,24,0.72)] px-3 py-2 text-center">
-          <p className="text-[11px] tracking-wide text-[#f5f0e6]">
-            {loadFailed
-              ? "Unable to load 3D model · Studio fallback mesh — not manufacturing CAD"
-              : "Studio fallback mesh — not manufacturing CAD"}
-          </p>
-        </div>
-      ) : (
-        <p className="pointer-events-none absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
-          Drag to orbit · scroll to zoom
-        </p>
-      )}
+      <p className="pointer-events-none absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.16em] text-[var(--color-ink-muted)]">
+        Drag to orbit · scroll to zoom
+      </p>
     </div>
   );
 }

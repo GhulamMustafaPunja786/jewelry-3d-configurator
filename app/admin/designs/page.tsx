@@ -45,7 +45,7 @@ export default async function AdminDesignsPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-3">{design.customer?.email ?? "—"}</td>
-                  <td className="px-4 py-3">{design.jewelryType}</td>
+                  <td className="px-4 py-3 capitalize">{design.jewelryType}</td>
                   <td className="px-4 py-3">
                     {formatCurrency(design.total, design.currency)}
                   </td>

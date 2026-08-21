@@ -41,8 +41,10 @@ export const designSubmissionSchema = z.object({
 export type DesignSubmissionInput = z.infer<typeof designSubmissionSchema>;
 
 export const designStatusSchema = z.enum([
+  "DRAFT",
   "NEW",
   "IN_REVIEW",
+  "UNDER_REVIEW",
   "QUOTED",
   "APPROVED",
   "REJECTED",

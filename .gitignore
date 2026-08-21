@@ -47,5 +47,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
-.env*
+# AI service local artifacts
+/ai-service/.venv/
+/ai-service/outputs/*
+!/ai-service/outputs/.gitkeep
+/ai-service/uploads/*
+!/ai-service/uploads/.gitkeep
+**/__pycache__/
+*.pyc

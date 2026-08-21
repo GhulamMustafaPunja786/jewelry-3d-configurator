@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Ring concept placeholder">
+  <rect width="512" height="512" fill="#f5f1ea"/>
+  <circle cx="256" cy="256" r="120" fill="none" stroke="#c4a35a" stroke-width="18"/>
+  <circle cx="256" cy="256" r="70" fill="none" stroke="#8a7038" stroke-width="8"/>
+  <polygon points="256,150 276,190 256,180 236,190" fill="#e8f0ff" stroke="#9aa7c2" stroke-width="2"/>
+  <text x="256" y="420" text-anchor="middle" font-family="Georgia, serif" font-size="18" fill="#78716c">Mock concept  not AI render</text>
+</svg>

@@ -1,6 +1,7 @@
 export type JewelryCategory =
   | "ring"
   | "necklace"
+  | "chain"
   | "bracelet"
   | "earrings"
   | "pendant";

@@ -30,6 +30,12 @@ export const envSchema = z.object({
   AI_PROVIDER: optionalString,
   AI_API_KEY: optionalString,
   AI_MODEL: optionalString,
+  AI3D_PROVIDER: optionalString,
+  AI3D_API_URL: optionalString,
+  AI3D_TIMEOUT: z.coerce.number().optional().default(300_000),
+  AI3D_MOCK_DELAY_MS: z.coerce.number().optional().default(2500),
+  IMAGE_PROVIDER: optionalString,
+  IMAGE_PROVIDER_URL: optionalString,
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),

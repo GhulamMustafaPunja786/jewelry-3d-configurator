@@ -1,16 +1,16 @@
 export function HowItWorks() {
   const steps = [
     {
-      title: "Choose",
-      body: "Select a ring silhouette, metal, and center stone.",
+      title: "Describe",
+      body: "Tell us the type, style, metal, and stone you have in mind.",
     },
     {
-      title: "Compose",
-      body: "Adjust size and band in a live 3D preview.",
+      title: "Visualize",
+      body: "Review an AI-generated 3D preview and refine with feedback.",
     },
     {
-      title: "Quote",
-      body: "Review pricing, share details, and submit to the atelier.",
+      title: "Estimate",
+      body: "Receive an atelier estimate and submit for specialist review.",
     },
   ];
 

@@ -2,10 +2,10 @@ import Link from "next/link";
 
 const nav = [
   { href: "/", label: "Home" },
+  { href: "/create", label: "Create" },
   { href: "/design", label: "Design" },
   { href: "/quotation", label: "Quotation" },
 ];
-
 export function Header() {
   const brand = process.env.NEXT_PUBLIC_APP_NAME || "Maison Atelier";
 

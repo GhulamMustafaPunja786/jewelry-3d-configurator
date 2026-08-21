@@ -2,9 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { formatDesignStatus } from "@/types/design";
 
 const STATUSES = [
+  "DRAFT",
   "NEW",
+  "UNDER_REVIEW",
   "IN_REVIEW",
   "QUOTED",
   "APPROVED",
@@ -47,7 +50,7 @@ export function DesignStatusSelect({
     >
       {STATUSES.map((s) => (
         <option key={s} value={s}>
-          {s}
+          {formatDesignStatus(s)}
         </option>
       ))}
     </select>

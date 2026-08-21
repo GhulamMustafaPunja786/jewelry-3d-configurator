@@ -38,7 +38,7 @@ function SubmitContent() {
         </p>
       ) : null}
       <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <Link href="/design?category=ring" onClick={() => reset()}>
+        <Link href="/create" onClick={() => reset()}>
           <Button>Start another</Button>
         </Link>
         <Link href="/">

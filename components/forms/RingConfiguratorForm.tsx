@@ -34,18 +34,22 @@ export function RingConfiguratorForm({
     defaultValues: config,
   });
 
-  const values = watch();
-
   useEffect(() => {
     recalculatePricing();
   }, [recalculatePricing]);
 
+  // Sync to the store only when a field changes. Watching all values with
+  // `watch()` returns a new object every render, which looped with the store
+  // update and crashed the page (React error #185).
   useEffect(() => {
-    const parsed = ringConfigSchema.safeParse(values);
-    if (parsed.success) {
-      updateConfig(parsed.data);
-    }
-  }, [values, updateConfig]);
+    const subscription = watch((formValues) => {
+      const parsed = ringConfigSchema.safeParse(formValues);
+      if (parsed.success) {
+        updateConfig(parsed.data);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, updateConfig]);
 
   return (
     <form
